@@ -1,0 +1,20 @@
+{
+  "name": "learningde",
+  "version": "1.0.0",
+  "description": "Learn German at B2 level: 3,000 everyday and IT words, daily mandatory shadowing, stories, role-play and spaced repetition. Runs offline in the browser.",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "npx --yes http-server -c-1 -p 8000 .",
+    "validate": "node scripts/validate.mjs",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "check": "npm run validate && npm test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

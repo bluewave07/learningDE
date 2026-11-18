@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Learn German (B2) with 3,000 everyday and IT words, daily shadowing, stories, role-play and spaced repetition – runs offline in your browser.">
+  <title>learningDE · Deutsch B2 für Alltag & IT</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%87%A9%F0%9F%87%AA%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header>
+    <a class="logo" href="#/home">learning<span>DE</span></a>
+    <a id="gatebar" class="gatebar" href="#/shadow">🎧</a>
+    <span id="streak" class="streak"></span>
+    <div class="hctl">
+      <label>Übungssprache
+        <span class="seg" id="langSeg"><button data-l="de">Deutsch</button><button data-l="en">English</button></span>
+      </label>
+      <label>Tempo <input type="range" id="rate" min="0.6" max="1.2" step="0.05" aria-label="Speech rate"><span id="rateV"></span></label>
+    </div>
+  </header>
+  <div class="layout">
+    <nav id="nav" aria-label="Navigation"></nav>
+    <main id="main"></main>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <!-- data -->
+  <script src="data/01-arbeit.js"></script>
+  <script src="data/02-buero.js"></script>
+  <script src="data/03-behoerden.js"></script>
+  <script src="data/04-wohnen.js"></script>
+  <script src="data/05-geld.js"></script>
+  <script src="data/06-gesundheit.js"></script>
+  <script src="data/07-einkaufen.js"></script>
+  <script src="data/08-verkehr.js"></script>
+  <script src="data/09-familie.js"></script>
+  <script src="data/10-gefuehle.js"></script>
+  <script src="data/11-freizeit.js"></script>
+  <script src="data/12-bildung.js"></script>
+  <script src="data/13-medien.js"></script>
+  <script src="data/14-politik.js"></script>
+  <script src="data/15-umwelt.js"></script>
+  <script src="data/16-wirtschaft.js"></script>
+  <script src="data/17-diskussion.js"></script>
+  <script src="data/18-abstrakt.js"></script>
+  <script src="data/19-redewendungen.js"></script>
+  <script src="data/20-entwicklung.js"></script>
+  <script src="data/21-qa.js"></script>
+  <script src="data/22-agile.js"></script>
+  <script src="data/23-devops.js"></script>
+  <script src="data/24-daten.js"></script>
+  <script src="data/25-sicherheit.js"></script>
+  <script src="data/26-debugging.js"></script>
+  <script src="data/27-netzwerk.js"></script>
+  <script src="data/28-produkt.js"></script>
+  <script src="data/29-ki.js"></script>
+  <script src="data/30-karriere-it.js"></script>
+  <script src="data/31-alltag.js"></script>
+  <script src="data/32-teamkommunikation.js"></script>
+  <script src="data/shadowing.js"></script>
+  <script src="data/stories.js"></script>
+  <script src="data/conversations.js"></script>
+  <!-- app -->
+  <script src="js/core.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
