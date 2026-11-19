@@ -184,10 +184,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 ```bash
 npm install
 npx playwright install chromium
-npm run check        # validate content + run all end-to-end tests
+npm run check        # validate content + run all end-to-end tests (Chromium)
+BROWSERS=all npm test   # all browsers incl. Firefox, WebKit and mobile emulation
 ```
 
-CI runs both on every push and pull request; the `main` branch is deployed to GitHub Pages automatically.
+CI validates the content and runs the end-to-end suite on **Chromium, Firefox, WebKit (Safari), iPhone 13 and Pixel 7** on every push and pull request; the `main` branch is deployed to GitHub Pages automatically.
 
 ## Privacy
 

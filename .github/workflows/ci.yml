@@ -6,8 +6,31 @@ on:
   pull_request:
 
 jobs:
-  test:
+  validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate content and service worker
+        run: npm run validate
+
+  e2e:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # official image with all browsers and system libraries preinstalled
+    # (keep the tag in sync with @playwright/test in package.json)
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --user 1001
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, mobile-safari, mobile-chrome]
+    name: e2e (${{ matrix.project }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,14 +38,13 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Validate content
-        run: npm run validate
-      - run: npx playwright install --with-deps chromium firefox webkit
-      - name: End-to-end tests (Chromium, Firefox, WebKit, iPhone, Android)
-        run: npm test
+      - name: Run tests on ${{ matrix.project }}
+        run: npx playwright test --project=${{ matrix.project }}
+        env:
+          CI: "true"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: playwright-report/
           retention-days: 7
