@@ -33,6 +33,7 @@ Question format: `[question DE, question EN, options[], index of the correct opt
 
 ```bash
 npm install
+npm run build:sw
 npm run validate
 npx playwright install chromium
 npm test

@@ -52,6 +52,20 @@
   setInterval(() => { if (!A.gate.done()) A.renderChrome(); }, 5000);
   document.addEventListener("voices", () => { if ((location.hash || "").includes("settings")) A.route(); });
   window.addEventListener("hashchange", A.route);
+  /* offline support + "install app" button (only when served over http/https) */
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    navigator.serviceWorker.register("sw.js").catch(() => { /* offline mode unavailable */ });
+  }
+  let installPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; $("#install").classList.remove("hidden"); });
+  window.addEventListener("appinstalled", () => { $("#install").classList.add("hidden"); A.toast("📲 App installiert!"); });
+  $("#install").onclick = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null; $("#install").classList.add("hidden");
+  };
+
   initHeader();
   A.route();
 })();

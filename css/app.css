@@ -226,3 +226,8 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 2
 .tok.known { border-bottom-color: var(--ok); text-decoration: none; }
 .tab { color: var(--ink); }
 .tab.on { color: var(--accent-ink); }
+
+/* installed app (standalone): respect notches / home indicator */
+header { padding-top: max(10px, env(safe-area-inset-top)); padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+.layout { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+@media (display-mode: standalone) { #install { display: none !important; } }

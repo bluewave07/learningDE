@@ -35,6 +35,7 @@ Most apps teach isolated words. learningDE is built around four methods that res
 - 📝 **Sentence notebook** – save sentences from stories and dialogues and shadow them later.
 - 🔎 **Dictionary search** across German, English and Turkish.
 - 🔥 **Streak, daily plan and progress export/import** – progress is stored only in your browser.
+- 📲 **Installable app (PWA)** – home-screen icon, full-screen, works offline on Android, iOS and desktop.
 
 | | |
 | --- | --- |
@@ -42,6 +43,18 @@ Most apps teach isolated words. learningDE is built around four methods that res
 | ![Story with tap-to-translate](docs/screenshots/story.png) | ![Role-play](docs/screenshots/roleplay.png) |
 
 ## Quick start
+
+**Use it online / install it as an app**
+
+Open **<https://bluewave07.github.io/learningDE/>** and install it:
+
+| Device | How to install |
+| --- | --- |
+| Android (Chrome) | Tap **📲 App installieren** in the header, or menu ⋮ → *Install app* |
+| iPhone / iPad (Safari) | Share button → *Add to Home Screen* |
+| Desktop (Chrome / Edge) | **📲 App installieren** in the header, or the install icon in the address bar |
+
+Once installed it starts full-screen from your home screen and works **completely offline** (the speech recognition still needs internet).
 
 **Option 1 – just open it**
 
@@ -125,6 +138,9 @@ Plus: **300 shadowing sentences**, **10 story episodes** and **12 role-play conv
 
 ```
 ├── index.html              # entry point – loads data and app scripts
+├── manifest.webmanifest    # PWA manifest (name, icons, shortcuts)
+├── sw.js                   # service worker for offline use (generated: npm run build:sw)
+├── icons/                  # app icons
 ├── css/app.css             # all styles (light + dark mode)
 ├── js/
 │   ├── core.js             # storage, data index, speech, spaced repetition, daily gate
@@ -155,7 +171,8 @@ Every theme is a single file in `data/`. A word is an array:
 Nouns start with their article and plural (`der Test, -s`). A new theme file must also be added to `index.html`. Then run:
 
 ```bash
-npm run validate     # schema, duplicates, word count
+npm run build:sw     # refresh the offline cache list
+npm run validate     # schema, duplicates, word count, service worker up to date
 npm test             # end-to-end tests
 ```
 

@@ -2,10 +2,17 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Learn German (B2) with 3,000 everyday and IT words, daily shadowing, stories, role-play and spaced repetition – runs offline in your browser.">
   <title>learningDE · Deutsch B2 für Alltag & IT</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%87%A9%F0%9F%87%AA%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#2f6fed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="learningDE">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -13,6 +20,7 @@
     <a class="logo" href="#/home">learning<span>DE</span></a>
     <a id="gatebar" class="gatebar" href="#/shadow">🎧</a>
     <span id="streak" class="streak"></span>
+    <button id="install" class="btn primary hidden" type="button">📲 App installieren</button>
     <div class="hctl">
       <label>Übungssprache
         <span class="seg" id="langSeg"><button data-l="de">Deutsch</button><button data-l="en">English</button></span>
