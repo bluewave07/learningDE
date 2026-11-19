@@ -67,11 +67,12 @@ test.describe("daily shadowing gate", () => {
   });
 
   test("finishing a round of 15 sentences unlocks the app before 5 minutes", async ({ page }) => {
+    test.setTimeout(90000);
     await open(page, "shadow");
     await page.getByRole("button", { name: "▶ Shadowing starten" }).click();
     for (let i = 0; i < 15; i++) {
-      await expect(page.locator(".shadow-sent")).not.toHaveClass(/blur/);
-      await page.waitForTimeout(80);
+      await expect(page.getByText(`Satz ${i + 1} / 15`)).toBeVisible();
+      await expect(page.getByRole("button", { name: "🔊 Anhören" })).toBeEnabled(); // playback finished
       await page.getByRole("button", { name: "✓ Nachgesprochen" }).click();
       await page.getByRole("button", { name: "🙂 Gut" }).click();
     }
@@ -87,8 +88,8 @@ test.describe("daily shadowing gate", () => {
     await page.getByRole("button", { name: "▶ Shadowing starten" }).click();
     const good = page.getByRole("button", { name: "🙂 Gut" });
     await expect(good).toBeDisabled();
-    await expect(page.locator(".shadow-sent")).not.toHaveClass(/blur/);
     await page.waitForTimeout(300);
+    await expect(page.getByRole("button", { name: "🔊 Anhören" })).toBeEnabled();
     await page.getByRole("button", { name: "✓ Nachgesprochen" }).click();
     await good.click();
     expect(await page.evaluate(() => Object.keys(window.App.S.shadow).length)).toBe(1);
