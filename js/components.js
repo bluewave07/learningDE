@@ -139,7 +139,7 @@
         <div class="shadow-btns"><button class="btn primary big" id="sh-start">▶ Shadowing starten</button></div>
         <p class="hint">${queue.length} Sätze bereit · Tasten: Leertaste = anhören, M = Mikrofon, 1/2/3 = bewerten</p></div>`;
       updateRing();
-      $("#sh-start", el).onclick = () => next();
+      $("#sh-start", el).onclick = () => { A.unlockTTS(); next(); };
     }
 
     function next() {

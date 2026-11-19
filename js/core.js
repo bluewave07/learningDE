@@ -175,7 +175,28 @@
   let tok = 0;
   App.rec = null;
   App.stopAll = () => { tok++; if (TTS) speechSynthesis.cancel(); if (App.rec) { try { App.rec.abort(); } catch (e) { /* ignore */ } App.rec = null; } };
-  App.sayNow = (text, lang, opts) => { App.stopAll(); return App.wait(60).then(() => App.speak(text, lang, opts)); };
+  /* only wait after cancel() if something was actually playing – an extra delay loses the
+     user gesture on iOS, where the first utterance must start inside the tap handler */
+  App.sayNow = (text, lang, opts) => {
+    const busy = TTS && (speechSynthesis.speaking || speechSynthesis.pending);
+    App.stopAll();
+    return busy ? App.wait(60).then(() => App.speak(text, lang, opts)) : App.speak(text, lang, opts);
+  };
+  /* iOS / Android unlock: speak a silent utterance synchronously on the first touch or click.
+     After that, later (asynchronous) playback is allowed. */
+  let unlocked = false;
+  App.unlockTTS = () => {
+    if (unlocked || !TTS) return;
+    unlocked = true;
+    try {
+      loadVoices();
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0; u.lang = "de-DE";
+      speechSynthesis.resume();
+      speechSynthesis.speak(u);
+    } catch (e) { unlocked = false; }
+  };
+  ["touchend", "pointerup", "click", "keydown"].forEach((ev) => document.addEventListener(ev, App.unlockTTS, { capture: true, passive: true }));
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") App.stopAll(); });
   /** plays [[text, lang, voice, pauseMs], ...] in order; onStep(i) highlights, -1 at the end */
   App.seq = async (items, onStep) => {
