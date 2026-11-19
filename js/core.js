@@ -117,17 +117,19 @@
 
   /* ---------- daily shadowing gate ---------- */
   App.IDLE_SEC = 30; // shadowing clock pauses after this many seconds without interaction
+  App.ROUND_MIN = 15; // a finished round with at least this many sentences also completes the daily goal
+  const dayDone = (d) => !!d && (d.sh >= App.prefs().shadowMin * 60 || !!d.round);
   App.gate = {
     need: () => App.prefs().shadowMin * 60,
-    done: () => App.day().sh >= App.gate.need(),
-    left: () => Math.max(0, App.gate.need() - App.day().sh),
+    done: () => dayDone(App.day()),
+    left: () => (App.gate.done() ? 0 : Math.max(0, App.gate.need() - App.day().sh)),
+    completeRound() { const d = App.day(); const before = App.gate.done(); d.round = true; App.save(); document.dispatchEvent(new CustomEvent("gate-change")); if (!before) document.dispatchEvent(new CustomEvent("gate-open")); },
     add(sec) { const d = App.day(); const before = d.sh < App.gate.need(); d.sh += sec; App.save(); document.dispatchEvent(new CustomEvent("gate-change")); if (before && d.sh >= App.gate.need()) document.dispatchEvent(new CustomEvent("gate-open")); }
   };
   App.streak = () => {
     let n = 0, d = App.today();
-    const need = App.gate.need();
-    if (!(App.S.days[d] && App.S.days[d].sh >= need)) d = App.addDays(d, -1);
-    while (App.S.days[d] && App.S.days[d].sh >= need) { n++; d = App.addDays(d, -1); }
+    if (!dayDone(App.S.days[d])) d = App.addDays(d, -1);
+    while (dayDone(App.S.days[d])) { n++; d = App.addDays(d, -1); }
     return n;
   };
 

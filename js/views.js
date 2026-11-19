@@ -12,7 +12,7 @@
     const due = A.dueWords().length, mastered = A.W.filter((w) => A.srs.mastered("words", w.id)).length, started = Object.keys(A.S.words).length;
     const shMastered = A.SH.filter((s) => A.srs.mastered("shadow", s.id)).length;
     const plan = [
-      { done: gateOk, t: `Shadowing · ${p.shadowMin} Minuten`, s: gateOk ? "Erledigt – alles ist freigeschaltet." : `Noch ${A.fmtTime(A.gate.left())} – danach wird alles freigeschaltet.`, href: "#/shadow", btn: gateOk ? "Weiter üben" : "Jetzt starten" },
+      { done: gateOk, t: `Shadowing · ${p.shadowMin} Minuten oder 1 Runde`, s: gateOk ? "Erledigt – alles ist freigeschaltet." : `Noch ${A.fmtTime(A.gate.left())} oder eine Runde (${A.ROUND_MIN} Sätze) – danach wird alles freigeschaltet.`, href: "#/shadow", btn: gateOk ? "Weiter üben" : "Jetzt starten" },
       { done: gateOk && due === 0, t: "Wiederholung", s: `${due} Wörter sind heute fällig.`, href: "#/learn", btn: "Wiederholen", lock: !gateOk },
       { done: d.newW >= p.newPerDay, t: `Neue Wörter · ${p.newPerDay} pro Tag`, s: `${d.newW} / ${p.newPerDay} heute gelernt.`, href: "#/learn", btn: "Lernen", lock: !gateOk },
       { done: false, t: "Input: Geschichte oder Gespräch", s: "Eine Folge hören, Wörter antippen, Fragen beantworten.", href: "#/stories", btn: "Öffnen", lock: !gateOk }
@@ -64,11 +64,24 @@
     }
     const dueSh = A.SH.filter((s) => A.srs.isDue("shadow", s.id));
     const fresh = A.SH.filter((s) => A.srs.isNew("shadow", s.id)).slice(0, Math.max(0, p.newShadowPerDay - A.day().shN));
-    let queue = dueSh.concat(fresh);
-    const refill = () => { const learned = A.SH.filter((s) => !A.srs.isNew("shadow", s.id)); const pool = learned.length >= 10 ? learned : A.SH.slice(0, 40); return shuffle(pool).slice(0, 20); };
-    if (!queue.length) queue = refill();
+    // one round = due + new sentences, topped up with already learned ones to at least ROUND_MIN
+    let queue = dueSh.concat(fresh).slice(0, 30);
+    if (queue.length < A.ROUND_MIN) {
+      const ids = new Set(queue.map((x) => x.id));
+      const learned = shuffle(A.SH.filter((x) => !ids.has(x.id) && !A.srs.isNew("shadow", x.id)));
+      const rest = A.SH.filter((x) => !ids.has(x.id) && A.srs.isNew("shadow", x.id));
+      queue = queue.concat(learned, rest).slice(0, A.ROUND_MIN);
+    }
     el.innerHTML = `<div id="sp"></div>`;
-    A.shadowPlayer($("#sp"), queue, { gate: true, bucket: "shadow", refill });
+    A.shadowPlayer($("#sp"), queue, {
+      gate: true, bucket: "shadow",
+      onFinish: (box) => {
+        box.innerHTML = `<div class="result"><div class="ring" style="--p:100">✓</div><p><b>Runde geschafft! ${queue.length} Sätze</b></p>
+          <p class="muted">${A.gate.done() ? "Tagesziel erreicht – alles ist freigeschaltet." : ""}</p>
+          <div class="toolbar" style="justify-content:center"><button class="btn" id="again">↻ Noch eine Runde</button><a class="btn primary" href="#/learn">Weiter: Wiederholen →</a></div></div>`;
+        $("#again", box).onclick = () => A.route();
+      }
+    });
   };
 
   /* ---------- daily learning (reviews + new words) ---------- */
@@ -437,7 +450,7 @@
   /* ---------- lock screen ---------- */
   V.locked = (m) => {
     m.innerHTML = `<div class="panel lock"><div class="big">🔒</div><h1>Erst Shadowing, dann der Rest</h1>
-      <p class="muted">Jeden Tag mindestens ${A.prefs().shadowMin} Minuten aktives Shadowing – danach ist alles freigeschaltet.<br>First shadow for ${A.prefs().shadowMin} minutes, then everything unlocks.</p>
+      <p class="muted">Jeden Tag ${A.prefs().shadowMin} Minuten Shadowing oder eine komplette Runde (${A.ROUND_MIN} Sätze) – danach ist alles freigeschaltet.<br>Shadow for ${A.prefs().shadowMin} minutes or finish one round, then everything unlocks.</p>
       <div class="timer-ring" style="--p:${Math.round((100 * A.day().sh) / A.gate.need())}">${A.fmtTime(A.gate.left())}</div>
       <a class="btn primary big" href="#/shadow">🎧 Shadowing starten</a></div>`;
   };

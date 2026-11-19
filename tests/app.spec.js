@@ -66,6 +66,22 @@ test.describe("daily shadowing gate", () => {
     await expect(page.getByText(/Pausiert/)).toBeVisible();
   });
 
+  test("finishing a round of 15 sentences unlocks the app before 5 minutes", async ({ page }) => {
+    await open(page, "shadow");
+    await page.getByRole("button", { name: "▶ Shadowing starten" }).click();
+    for (let i = 0; i < 15; i++) {
+      await expect(page.locator(".shadow-sent")).not.toHaveClass(/blur/);
+      await page.waitForTimeout(80);
+      await page.getByRole("button", { name: "✓ Nachgesprochen" }).click();
+      await page.getByRole("button", { name: "🙂 Gut" }).click();
+    }
+    await expect(page.getByText(/Runde geschafft/)).toBeVisible();
+    expect(await page.evaluate(() => window.App.day().sh)).toBeLessThan(300);
+    await expect(page.locator("#gatebar")).toContainText("erledigt");
+    await open(page, "themes");
+    await expect(page.getByRole("heading", { name: "Themen" })).toBeVisible();
+  });
+
   test("rating requires repeating first and is stored", async ({ page }) => {
     await open(page, "shadow");
     await page.getByRole("button", { name: "▶ Shadowing starten" }).click();

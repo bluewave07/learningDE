@@ -116,6 +116,7 @@
     const p = A.prefs();
     let queue = items.slice(), cur = null, spoken = false, heard = false, startedAt = 0, count = 0, banked = 0, uiTimer = null;
     let session = false, lastAction = 0, listening = false;
+    const total = items.length;
     const touch = () => { lastAction = Date.now(); };
     const active = () => session && document.visibilityState === "visible" && (listening || Date.now() - lastAction < A.IDLE_SEC * 1000);
     el.addEventListener("pointerdown", touch, true);
@@ -155,6 +156,7 @@
 
     function next() {
       if (!queue.length && opts.refill) queue = opts.refill();
+      if (!queue.length && opts.gate && count >= A.ROUND_MIN) A.gate.completeRound();
       if (!queue.length) { window.onkeydown = null; if (opts.onFinish) opts.onFinish(el); else el.innerHTML = `<div class="result"><div class="ring" style="--p:100">✓</div><p><b>Alle Sätze geübt!</b></p></div>`; return; }
       cur = queue.shift(); spoken = false; heard = false; startedAt = 0;
       draw(); play();
@@ -184,7 +186,7 @@
       const lvl = opts.bucket ? A.srs.level(opts.bucket, cur.id) : -1;
       el.innerHTML = `<div class="shadow-card">
         ${opts.gate ? `<div class="timer-ring" id="sh-ring">--:--</div><div class="muted" id="sh-state" style="font-size:13px"></div>` : ""}
-        <div class="toolbar" style="justify-content:center">${cur.gt ? `<span class="lvl">${esc(cur.gt)}</span>` : ""}${lvl >= 0 ? `<span class="lvl l${lvl}">Stufe ${lvl}</span>` : opts.bucket ? `<span class="lvl">neu</span>` : ""}<span class="muted" style="font-size:13px">${count} geübt${banked ? ` · ${A.fmtTime(banked)} heute in dieser Sitzung` : ""}</span></div>
+        <div class="toolbar" style="justify-content:center">${cur.gt ? `<span class="lvl">${esc(cur.gt)}</span>` : ""}${lvl >= 0 ? `<span class="lvl l${lvl}">Stufe ${lvl}</span>` : opts.bucket ? `<span class="lvl">neu</span>` : ""}<span class="muted" style="font-size:13px">Satz ${count + 1} / ${total}${banked ? ` · ${A.fmtTime(banked)} geübt` : ""}</span></div>
         <div class="shadow-sent ${p.blind ? "blur" : ""}">${esc(cur.de)}</div>
         <div class="shadow-en">${esc(cur.en)}</div>
         <div class="tts-msg"></div>

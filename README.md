@@ -17,7 +17,7 @@ Most apps teach isolated words. learningDE is built around four methods that res
 
 | Method | What it means here |
 | --- | --- |
-| **Shadowing** | Listen to a native-speed sentence and repeat it out loud at the same time or right after. Trains pronunciation, rhythm and listening at once. **At least 5 minutes of real practice every day are mandatory** – the rest of the app stays locked until you've done them. |
+| **Shadowing** | Listen to a native-speed sentence and repeat it out loud at the same time or right after. Trains pronunciation, rhythm and listening at once. **Every day, 5 minutes or one complete round (15 sentences) are mandatory** – whichever comes first; the rest of the app stays locked until then. |
 | **Spaced repetition** | Every word and every core sentence lives in a Leitner box. Hard items come back tomorrow, easy ones in a week, then a month. |
 | **Comprehensible input** | A 10-episode story series and themed texts just above your level. Tap any underlined word to see its meaning. |
 | **Output** | Role-play real conversations (you speak your part, the app plays the others), dictation, free speaking against a 90-second timer. |
