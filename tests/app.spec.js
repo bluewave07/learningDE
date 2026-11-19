@@ -40,37 +40,42 @@ test.describe("daily shadowing gate", () => {
     await expect(page.locator(".shadow-sent")).toBeVisible();
   });
 
-  test("nothing is counted while the learner does nothing", async ({ page }) => {
+  test("nothing is counted before the session is started", async ({ page }) => {
     await open(page, "shadow");
-    await page.getByRole("button", { name: "▶ Shadowing starten" }).click();
     await page.waitForTimeout(2500);
     expect(await page.evaluate(() => window.App.day().sh)).toBe(0);
     await expect(page.locator("#gatebar")).toContainText("noch 5:00");
   });
 
-  test("rating requires repeating first; time is credited only on rating", async ({ page }) => {
+  test("the clock runs continuously during a session", async ({ page }) => {
+    await open(page, "shadow");
+    await page.getByRole("button", { name: "▶ Shadowing starten" }).click();
+    await page.waitForTimeout(3500);
+    expect(await page.evaluate(() => window.App.day().sh)).toBeGreaterThanOrEqual(2);
+  });
+
+  test("the clock pauses when the learner is idle", async ({ page }) => {
+    await open(page, "shadow");
+    await page.evaluate(() => { window.App.IDLE_SEC = 1; });
+    await page.getByRole("button", { name: "▶ Shadowing starten" }).click();
+    await page.waitForTimeout(2500);
+    const a = await page.evaluate(() => window.App.day().sh);
+    await page.waitForTimeout(3000);
+    const b = await page.evaluate(() => window.App.day().sh);
+    expect(b).toBe(a);
+    await expect(page.getByText(/Pausiert/)).toBeVisible();
+  });
+
+  test("rating requires repeating first and is stored", async ({ page }) => {
     await open(page, "shadow");
     await page.getByRole("button", { name: "▶ Shadowing starten" }).click();
     const good = page.getByRole("button", { name: "🙂 Gut" });
     await expect(good).toBeDisabled();
-    await page.waitForTimeout(1500);
-    await page.getByRole("button", { name: "✓ Nachgesprochen" }).click();
-    await good.click();
-    const state = await page.evaluate(() => ({ graded: Object.keys(window.App.S.shadow).length, sh: window.App.day().sh }));
-    expect(state.graded).toBe(1);
-    expect(state.sh).toBeGreaterThanOrEqual(1);
-    expect(state.sh).toBeLessThanOrEqual(40);
-  });
-
-  test("credit per sentence is capped", async ({ page }) => {
-    await open(page, "shadow");
-    await page.getByRole("button", { name: "▶ Shadowing starten" }).click();
     await expect(page.locator(".shadow-sent")).not.toHaveClass(/blur/);
     await page.waitForTimeout(300);
     await page.getByRole("button", { name: "✓ Nachgesprochen" }).click();
-    await page.evaluate(() => { const real = Date.now; Date.now = () => real() + 10 * 60 * 1000; });
-    await page.getByRole("button", { name: "🙂 Gut" }).click();
-    expect(await page.evaluate(() => window.App.day().sh)).toBeLessThanOrEqual(40);
+    await good.click();
+    expect(await page.evaluate(() => Object.keys(window.App.S.shadow).length)).toBe(1);
   });
 
   test("paragraph shadowing credits time after reading the whole text", async ({ page }) => {

@@ -24,7 +24,7 @@ Most apps teach isolated words. learningDE is built around four methods that res
 
 ## Features
 
-- 🎧 **Daily shadowing gate** – 300 core everyday sentences in 15 situations (doctor, landlord, Bürgeramt, phone, meetings, IT team …). Only real practice counts: for each sentence the time from listening to your self-rating is credited – and only after you repeated it (🎤 or ✓), capped by sentence length. Leaving the app open does nothing.
+- 🎧 **Daily shadowing gate** – 300 core everyday sentences in 15 situations (doctor, landlord, Bürgeramt, phone, meetings, IT team …). Once you start a session the clock runs continuously; it pauses automatically after 30 seconds without any tap or when the app is in the background, so leaving it open does not fill the goal.
 - 🗣️ **24 paragraph shadowing texts** – one connected first-person text per theme (my job, at the doctor's, our sprint, an evening release …). Shadow it sentence by sentence, then the whole paragraph in one go.
 - 📚 **3,017 words in 32 themes** – about 2,000 general B2 words and 1,000 IT words, each with article colour, plural, an example sentence and its English translation.
 - 🇬🇧 **German ↔ English throughout** – every word and sentence can be heard in both languages. Switch the *practice language* to English to train dictation, speaking and flashcards in English too.

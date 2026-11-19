@@ -116,6 +116,7 @@
   App.newWords = (n) => App.W.filter((w) => App.srs.isNew("words", w.id)).slice(0, n);
 
   /* ---------- daily shadowing gate ---------- */
+  App.IDLE_SEC = 30; // shadowing clock pauses after this many seconds without interaction
   App.gate = {
     need: () => App.prefs().shadowMin * 60,
     done: () => App.day().sh >= App.gate.need(),

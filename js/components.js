@@ -108,16 +108,25 @@
      opts.gate   – credit practice time towards the daily goal
      opts.bucket – SRS bucket for the self-ratings ("shadow")
      opts.refill – returns more items when the queue runs out
-     Time model: nothing runs in the background. For each sentence the time between the first
-     playback and the rating is credited – but only if the learner repeated the sentence
-     (🎤 or ✓) and rated it, and at most a cap that depends on the sentence length.
-     Doing nothing therefore never fills the daily goal. */
+     Time model: once the session is started the clock runs continuously, second by second.
+     It pauses when the app is in the background or after A.IDLE_SEC seconds without any tap,
+     click or key press (while the microphone is listening it keeps running). */
   A.shadowPlayer = (el, items, opts) => {
     opts = opts || {};
     const p = A.prefs();
     let queue = items.slice(), cur = null, spoken = false, heard = false, startedAt = 0, count = 0, banked = 0, uiTimer = null;
-    const capFor = (s) => Math.round(Math.min(40, Math.max(12, (s.length * 0.075) / p.rate * 3 + 8)));
-    const pending = () => (startedAt ? Math.min(capFor(cur.de), (Date.now() - startedAt) / 1000) : 0);
+    let session = false, lastAction = 0, listening = false;
+    const touch = () => { lastAction = Date.now(); };
+    const active = () => session && document.visibilityState === "visible" && (listening || Date.now() - lastAction < A.IDLE_SEC * 1000);
+    el.addEventListener("pointerdown", touch, true);
+    el.addEventListener("keydown", touch, true);
+    const onKey = () => { if (document.body.contains(el)) touch(); else document.removeEventListener("keydown", onKey, true); };
+    document.addEventListener("keydown", onKey, true);
+    function tick() {
+      if (!document.body.contains(el)) { clearInterval(uiTimer); return; }
+      if (opts.gate && active()) { A.gate.add(1); banked++; }
+      updateRing();
+    }
 
     function updateRing() {
       if (!opts.gate || !document.body.contains(el)) { clearInterval(uiTimer); return; }
@@ -127,8 +136,10 @@
       ring.textContent = A.gate.done() ? "✓" : A.fmtTime(A.gate.left());
       const st = $("#sh-state", el);
       if (A.gate.done()) st.textContent = "Tagesziel erreicht – alles ist freigeschaltet. Weiter so!";
-      else if (!startedAt) st.textContent = "Die Zeit zählt erst, wenn du einen Satz anhörst, nachsprichst und bewertest.";
-      else st.textContent = `Dieser Satz: +${Math.floor(pending())} s (max. ${capFor(cur.de)} s) – wird beim Bewerten gutgeschrieben.`;
+      else if (!session) st.textContent = "Die Zeit läuft, sobald du startest.";
+      else if (active()) st.textContent = "⏱ Zeit läuft";
+      else st.textContent = `⏸ Pausiert – nach ${A.IDLE_SEC} s ohne Aktion. Tippe auf einen Button, um weiterzumachen.`;
+      ring.classList.toggle("paused", session && !active());
     }
 
     function intro() {
@@ -139,7 +150,7 @@
         <div class="shadow-btns"><button class="btn primary big" id="sh-start">▶ Shadowing starten</button></div>
         <p class="hint">${queue.length} Sätze bereit · Tasten: Leertaste = anhören, M = Mikrofon, 1/2/3 = bewerten</p></div>`;
       updateRing();
-      $("#sh-start", el).onclick = () => { A.unlockTTS(); next(); };
+      $("#sh-start", el).onclick = () => { A.unlockTTS(); session = true; touch(); next(); };
     }
 
     function next() {
@@ -202,7 +213,7 @@
         if (mic.classList.contains("rec")) { A.stopAll(); return; }
         if (!startedAt) return A.toast("Erst anhören, dann nachsprechen 🙂");
         if (!A.SR) { res.innerHTML = `<p class="hint">${esc(A.micErr("unsupported"))}</p>`; return; }
-        A.stopAll(); mic.classList.add("rec"); mic.textContent = "● Stopp";
+        A.stopAll(); listening = true; mic.classList.add("rec"); mic.textContent = "● Stopp";
         res.innerHTML = `<span class="muted">Ich höre zu … · Listening …</span>`;
         try {
           const t = await A.listen("de", { onInterim: (x) => (res.innerHTML = `<span class="muted">${esc(x)}</span>`) });
@@ -210,7 +221,7 @@
           if (t) enableRate();
         } catch (e) {
           res.innerHTML = `<span class="badt">${esc(A.micErr(e))}</span><p class="hint">Du kannst stattdessen laut sprechen und „✓ Nachgesprochen“ klicken.</p>`;
-        } finally { mic.classList.remove("rec"); mic.textContent = "🎤 Nachsprechen"; }
+        } finally { listening = false; touch(); mic.classList.remove("rec"); mic.textContent = "🎤 Nachsprechen"; }
       };
       $$("[data-g]", el).forEach((b) => (b.onclick = () => rate(+b.dataset.g)));
       window.onkeydown = (e) => {
@@ -223,8 +234,6 @@
 
     function rate(g) {
       if (!spoken) return;
-      const sec = Math.floor(pending());
-      if (opts.gate && sec > 0) { A.gate.add(sec); banked += sec; }
       count++;
       if (opts.bucket && cur.id) { const wasNew = A.srs.isNew(opts.bucket, cur.id); A.srs.grade(opts.bucket, cur.id, g); if (wasNew) { A.day().shN++; A.save(); } }
       if (g === 1) queue.splice(Math.min(3, queue.length), 0, cur);
@@ -232,7 +241,7 @@
       next();
     }
 
-    if (opts.gate) uiTimer = setInterval(updateRing, 1000);
+    uiTimer = setInterval(tick, 1000);
     intro();
     return { stop: () => { clearInterval(uiTimer); A.stopAll(); } };
   };
