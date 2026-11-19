@@ -104,47 +104,81 @@
   };
 
   /* ---------- shadowing player ----------
-     items: [{id, de, en}], opts.gate = true counts active seconds towards the daily goal,
-     opts.bucket = SRS bucket for ratings ("shadow"), opts.refill() returns more items when the queue runs out. */
+     items: [{id, de, en}]
+     opts.gate   – credit practice time towards the daily goal
+     opts.bucket – SRS bucket for the self-ratings ("shadow")
+     opts.refill – returns more items when the queue runs out
+     Time model: nothing runs in the background. For each sentence the time between the first
+     playback and the rating is credited – but only if the learner repeated the sentence
+     (🎤 or ✓) and rated it, and at most a cap that depends on the sentence length.
+     Doing nothing therefore never fills the daily goal. */
   A.shadowPlayer = (el, items, opts) => {
     opts = opts || {};
-    let queue = items.slice(), cur = null, played = false, spoken = false, lastAction = Date.now(), timer = null, count = 0;
     const p = A.prefs();
-    const touch = () => { lastAction = Date.now(); };
-    function tick() {
-      if (!document.body.contains(el)) { clearInterval(timer); return; }
-      const active = Date.now() - lastAction < 25000 && document.visibilityState === "visible";
-      if (active && opts.gate) A.gate.add(1);
-      const ring = $("#sh-ring", el);
-      if (ring && opts.gate) {
-        const need = A.gate.need(), have = Math.min(need, A.day().sh);
-        ring.style.setProperty("--p", Math.round((100 * have) / need));
-        ring.textContent = A.gate.done() ? "✓" : A.fmtTime(A.gate.left());
-        ring.classList.toggle("paused", !active);
-        $("#sh-state", el).textContent = A.gate.done() ? "Tagesziel erreicht – weiter so!" : active ? "Zeit läuft · aktiv" : "Pausiert – klicke 🔊 oder 🎤, um weiterzumachen";
-      }
+    let queue = items.slice(), cur = null, spoken = false, heard = false, startedAt = 0, count = 0, banked = 0, uiTimer = null;
+    const capFor = (s) => Math.round(Math.min(40, Math.max(12, (s.length * 0.075) / p.rate * 3 + 8)));
+    const pending = () => (startedAt ? Math.min(capFor(cur.de), (Date.now() - startedAt) / 1000) : 0);
+
+    function updateRing() {
+      if (!opts.gate || !document.body.contains(el)) { clearInterval(uiTimer); return; }
+      const ring = $("#sh-ring", el); if (!ring) return;
+      const need = A.gate.need(), have = Math.min(need, A.day().sh);
+      ring.style.setProperty("--p", Math.round((100 * have) / need));
+      ring.textContent = A.gate.done() ? "✓" : A.fmtTime(A.gate.left());
+      const st = $("#sh-state", el);
+      if (A.gate.done()) st.textContent = "Tagesziel erreicht – alles ist freigeschaltet. Weiter so!";
+      else if (!startedAt) st.textContent = "Die Zeit zählt erst, wenn du einen Satz anhörst, nachsprichst und bewertest.";
+      else st.textContent = `Dieser Satz: +${Math.floor(pending())} s (max. ${capFor(cur.de)} s) – wird beim Bewerten gutgeschrieben.`;
     }
-    if (opts.gate) timer = setInterval(tick, 1000);
+
+    function intro() {
+      el.innerHTML = `<div class="shadow-card">
+        ${opts.gate ? `<div class="timer-ring" id="sh-ring">--:--</div><div class="muted" id="sh-state" style="font-size:13px"></div>` : ""}
+        <h2 style="margin:18px 0 6px">Bereit?</h2>
+        <p class="muted" style="max-width:520px;margin:0 auto">So geht's: <b>1.</b> Satz anhören · <b>2.</b> laut nachsprechen (🎤 oder ✓) · <b>3.</b> bewerten.<br>Gezählt wird nur die Zeit, in der du wirklich übst.</p>
+        <div class="shadow-btns"><button class="btn primary big" id="sh-start">▶ Shadowing starten</button></div>
+        <p class="hint">${queue.length} Sätze bereit · Tasten: Leertaste = anhören, M = Mikrofon, 1/2/3 = bewerten</p></div>`;
+      updateRing();
+      $("#sh-start", el).onclick = () => next();
+    }
+
     function next() {
       if (!queue.length && opts.refill) queue = opts.refill();
-      if (!queue.length) { el.innerHTML = `<div class="result"><div class="ring" style="--p:100">✓</div><p><b>Alle Sätze geübt!</b></p></div>`; return; }
-      cur = queue.shift(); played = false; spoken = false; draw(); play();
+      if (!queue.length) { window.onkeydown = null; el.innerHTML = `<div class="result"><div class="ring" style="--p:100">✓</div><p><b>Alle Sätze geübt!</b></p></div>`; return; }
+      cur = queue.shift(); spoken = false; heard = false; startedAt = 0;
+      draw(); play();
     }
+
     async function play(slow) {
-      touch();
-      await A.sayNow(cur.de, "de", slow ? { rate: Math.max(0.55, p.rate - 0.3) } : null);
-      touch();
-      if (!played) { played = true; const s = $(".shadow-sent", el); s && s.classList.remove("blur"); }
+      const playBtn = $("[data-a=play]", el); playBtn && (playBtn.disabled = true);
+      const r = await A.sayNow(cur.de, "de", slow ? { rate: Math.max(0.55, p.rate - 0.3) } : null);
+      if (!document.body.contains(el)) return;
+      playBtn && (playBtn.disabled = false);
+      const msg = $(".tts-msg", el);
+      if (r && r.ok) {
+        if (!startedAt) startedAt = Date.now();
+        heard = true; msg && (msg.innerHTML = "");
+        const sEl = $(".shadow-sent", el); sEl && sEl.classList.remove("blur");
+      } else if (msg) {
+        msg.innerHTML = A.ttsBlocked
+          ? `<span class="badt">Der Browser hat die Wiedergabe blockiert – tippe auf „🔊 Anhören“.</span>`
+          : `<span class="badt">Keine Sprachausgabe gehört? Prüfe die Lautstärke oder installiere eine deutsche Stimme (Einstellungen).</span>`;
+        const sEl = $(".shadow-sent", el); sEl && sEl.classList.remove("blur");
+        if (!startedAt) startedAt = Date.now();
+      }
+      updateRing();
     }
+
     function draw() {
       const lvl = opts.bucket ? A.srs.level(opts.bucket, cur.id) : -1;
       el.innerHTML = `<div class="shadow-card">
-        ${opts.gate ? `<div class="timer-ring" id="sh-ring">--:--</div><div class="muted" id="sh-state" style="font-size:13px">…</div>` : ""}
-        <div class="toolbar" style="justify-content:center">${cur.gt ? `<span class="lvl">${esc(cur.gt)}</span>` : ""}${lvl >= 0 ? `<span class="lvl l${lvl}">Stufe ${lvl}</span>` : opts.bucket ? `<span class="lvl">neu</span>` : ""}<span class="muted" style="font-size:13px">${count} geübt</span></div>
+        ${opts.gate ? `<div class="timer-ring" id="sh-ring">--:--</div><div class="muted" id="sh-state" style="font-size:13px"></div>` : ""}
+        <div class="toolbar" style="justify-content:center">${cur.gt ? `<span class="lvl">${esc(cur.gt)}</span>` : ""}${lvl >= 0 ? `<span class="lvl l${lvl}">Stufe ${lvl}</span>` : opts.bucket ? `<span class="lvl">neu</span>` : ""}<span class="muted" style="font-size:13px">${count} geübt${banked ? ` · ${A.fmtTime(banked)} heute in dieser Sitzung` : ""}</span></div>
         <div class="shadow-sent ${p.blind ? "blur" : ""}">${esc(cur.de)}</div>
         <div class="shadow-en">${esc(cur.en)}</div>
+        <div class="tts-msg"></div>
         <div class="shadow-btns">
-          <button class="btn big" data-a="play">🔊 Nochmal</button>
+          <button class="btn big" data-a="play">🔊 Anhören</button>
           <button class="btn big" data-a="slow">🐢 Langsam</button>
           <button class="mic btn big" data-a="mic">🎤 Nachsprechen</button>
           <button class="btn big" data-a="self">✓ Nachgesprochen</button>
@@ -155,43 +189,52 @@
           <button class="btn" data-g="2" disabled>🙂 Gut</button>
           <button class="btn primary" data-g="3" disabled>😎 Leicht</button>
         </div>
-        <p class="hint">Hör zu → sprich <b>gleichzeitig oder direkt danach</b> laut mit → bewerte dich. Tasten: Leertaste = anhören, M = Mikrofon, 1/2/3 = bewerten.</p>
+        <p class="hint">Sprich <b>gleichzeitig oder direkt danach</b> laut mit. Bewerten geht erst nach dem Nachsprechen.</p>
       </div>`;
-      tick();
+      updateRing();
       const res = $(".res", el);
       const enableRate = () => { spoken = true; $$("[data-g]", el).forEach((b) => (b.disabled = false)); };
       $("[data-a=play]", el).onclick = () => play();
       $("[data-a=slow]", el).onclick = () => play(true);
-      $("[data-a=self]", el).onclick = () => { touch(); enableRate(); };
+      $("[data-a=self]", el).onclick = () => { if (!startedAt) return A.toast("Erst anhören, dann nachsprechen 🙂"); enableRate(); $("[data-a=self]", el).classList.add("primary"); };
       const mic = $("[data-a=mic]", el);
       mic.onclick = async () => {
-        touch();
         if (mic.classList.contains("rec")) { A.stopAll(); return; }
-        if (!A.SR) { res.innerHTML = `<p class="hint">${esc(A.micErr("unsupported"))}</p>`; enableRate(); return; }
+        if (!startedAt) return A.toast("Erst anhören, dann nachsprechen 🙂");
+        if (!A.SR) { res.innerHTML = `<p class="hint">${esc(A.micErr("unsupported"))}</p>`; return; }
         A.stopAll(); mic.classList.add("rec"); mic.textContent = "● Stopp";
         res.innerHTML = `<span class="muted">Ich höre zu … · Listening …</span>`;
-        const keep = setInterval(touch, 3000);
-        try { const t = await A.listen("de", { onInterim: (x) => (res.innerHTML = `<span class="muted">${esc(x)}</span>`) }); res.innerHTML = t ? A.alignHtml(cur.de, t, "Erkannt") : `<span class="muted">${A.micErr("no-speech")}</span>`; if (t) enableRate(); }
-        catch (e) { res.innerHTML = `<span class="badt">${esc(A.micErr(e))}</span>`; if (e === "unsupported" || e === "network" || e === "not-allowed") enableRate(); }
-        finally { clearInterval(keep); mic.classList.remove("rec"); mic.textContent = "🎤 Nachsprechen"; touch(); }
+        try {
+          const t = await A.listen("de", { onInterim: (x) => (res.innerHTML = `<span class="muted">${esc(x)}</span>`) });
+          res.innerHTML = t ? A.alignHtml(cur.de, t, "Erkannt") : `<span class="muted">${A.micErr("no-speech")}</span>`;
+          if (t) enableRate();
+        } catch (e) {
+          res.innerHTML = `<span class="badt">${esc(A.micErr(e))}</span><p class="hint">Du kannst stattdessen laut sprechen und „✓ Nachgesprochen“ klicken.</p>`;
+        } finally { mic.classList.remove("rec"); mic.textContent = "🎤 Nachsprechen"; }
       };
       $$("[data-g]", el).forEach((b) => (b.onclick = () => rate(+b.dataset.g)));
       window.onkeydown = (e) => {
-        if (e.target.tagName === "INPUT") return;
+        if (e.target.tagName === "INPUT" || e.repeat) return;
         if (e.code === "Space") { e.preventDefault(); play(); }
         else if (e.key === "m" || e.key === "M") mic.click();
         else if (["1", "2", "3"].includes(e.key) && spoken) rate(+e.key);
       };
     }
+
     function rate(g) {
-      touch(); count++;
+      if (!spoken) return;
+      const sec = Math.floor(pending());
+      if (opts.gate && sec > 0) { A.gate.add(sec); banked += sec; }
+      count++;
       if (opts.bucket && cur.id) { const wasNew = A.srs.isNew(opts.bucket, cur.id); A.srs.grade(opts.bucket, cur.id, g); if (wasNew) { A.day().shN++; A.save(); } }
       if (g === 1) queue.splice(Math.min(3, queue.length), 0, cur);
       opts.onRate && opts.onRate();
       next();
     }
-    next();
-    return { stop: () => clearInterval(timer) };
+
+    if (opts.gate) uiTimer = setInterval(updateRing, 1000);
+    intro();
+    return { stop: () => { clearInterval(uiTimer); A.stopAll(); } };
   };
 
   /* ---------- speaking list (shadow individual sentences with score) ---------- */

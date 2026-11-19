@@ -119,7 +119,7 @@
     need: () => App.prefs().shadowMin * 60,
     done: () => App.day().sh >= App.gate.need(),
     left: () => Math.max(0, App.gate.need() - App.day().sh),
-    add(sec) { const d = App.day(); const before = d.sh < App.gate.need(); d.sh += sec; App.save(); if (before && d.sh >= App.gate.need()) document.dispatchEvent(new CustomEvent("gate-open")); }
+    add(sec) { const d = App.day(); const before = d.sh < App.gate.need(); d.sh += sec; App.save(); document.dispatchEvent(new CustomEvent("gate-change")); if (before && d.sh >= App.gate.need()) document.dispatchEvent(new CustomEvent("gate-open")); }
   };
   App.streak = () => {
     let n = 0, d = App.today();
@@ -140,26 +140,43 @@
     const good = vs.filter((v) => /google|natural|neural|premium|enhanced|online/i.test(v.name));
     return good.length ? good.concat(vs.filter((v) => !good.includes(v))) : vs;
   };
+  /* Robust wrapper around speechSynthesis:
+     - browsers swallow an utterance spoken right after cancel(), so we wait briefly first
+     - Chrome can get stuck "paused" and garbage-collects utterances (onend never fires) – keep a reference
+     - speaking without a prior user gesture is blocked ("not-allowed") – reported via App.ttsBlocked */
+  const live = new Set();
+  App.ttsBlocked = false;
   App.speak = (text, lang, opts) => {
     opts = opts || {};
-    if (!TTS) { App.toast("Dein Browser unterstützt keine Sprachausgabe."); return Promise.resolve(); }
-    return new Promise((res) => {
+    if (!TTS) { App.toast("Dein Browser unterstützt keine Sprachausgabe."); return Promise.resolve({ ok: false }); }
+    if (!voices.length) loadVoices();
+    const busy = speechSynthesis.speaking || speechSynthesis.pending;
+    return App.wait(busy ? 120 : 0).then(() => new Promise((res) => {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = lang === "de" ? "de-DE" : "en-US";
       const vs = App.voicesFor(lang);
       if (vs.length) u.voice = vs[(opts.voice || 0) % Math.min(vs.length, 3)];
       const rate = opts.rate || App.prefs().rate;
       u.rate = rate;
-      let done = false; const fin = () => { if (!done) { done = true; res(); } };
-      u.onend = fin; u.onerror = fin;
-      setTimeout(fin, Math.max(3000, (text.length * 110) / rate));
+      let done = false, started = false;
+      const fin = (ok) => { if (done) return; done = true; live.delete(u); clearTimeout(guard); res({ ok }); };
+      u.onstart = () => { started = true; App.ttsBlocked = false; };
+      u.onend = () => fin(true);
+      u.onerror = (e) => {
+        if (e && e.error === "not-allowed") { App.ttsBlocked = true; document.dispatchEvent(new CustomEvent("tts-blocked")); }
+        fin(e && (e.error === "interrupted" || e.error === "canceled"));
+      };
+      const guard = setTimeout(() => fin(started), Math.max(4000, (text.length * 120) / rate + 2000));
+      live.add(u);
+      try { speechSynthesis.resume(); } catch (e) { /* ignore */ }
       speechSynthesis.speak(u);
-    });
+    }));
   };
   let tok = 0;
   App.rec = null;
   App.stopAll = () => { tok++; if (TTS) speechSynthesis.cancel(); if (App.rec) { try { App.rec.abort(); } catch (e) { /* ignore */ } App.rec = null; } };
-  App.sayNow = (text, lang, opts) => { App.stopAll(); return App.speak(text, lang, opts); };
+  App.sayNow = (text, lang, opts) => { App.stopAll(); return App.wait(60).then(() => App.speak(text, lang, opts)); };
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") App.stopAll(); });
   /** plays [[text, lang, voice, pauseMs], ...] in order; onStep(i) highlights, -1 at the end */
   App.seq = async (items, onStep) => {
     App.stopAll(); const my = tok;

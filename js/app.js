@@ -45,11 +45,13 @@
     $("#rate").oninput = (e) => { A.setPref("rate", +e.target.value); $("#rateV").textContent = Math.round(+e.target.value * 100) + "%"; };
   }
 
+  document.addEventListener("gate-change", () => A.renderChrome());
+  let blockedShown = false;
+  document.addEventListener("tts-blocked", () => { if (!blockedShown) { blockedShown = true; A.toast("🔇 Ton blockiert – tippe einmal auf „🔊 Anhören“."); } });
   document.addEventListener("gate-open", () => {
     A.toast("🎉 Tagesziel erreicht! Alles ist freigeschaltet.");
     A.renderChrome();
   });
-  setInterval(() => { if (!A.gate.done()) A.renderChrome(); }, 5000);
   document.addEventListener("voices", () => { if ((location.hash || "").includes("settings")) A.route(); });
   window.addEventListener("hashchange", A.route);
   /* offline support + "install app" button (only when served over http/https) */

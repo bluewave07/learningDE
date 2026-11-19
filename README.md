@@ -17,14 +17,14 @@ Most apps teach isolated words. learningDE is built around four methods that res
 
 | Method | What it means here |
 | --- | --- |
-| **Shadowing** | Listen to a native-speed sentence and repeat it out loud at the same time or right after. Trains pronunciation, rhythm and listening at once. **At least 5 minutes every day are mandatory** – the rest of the app stays locked until you've done them. |
+| **Shadowing** | Listen to a native-speed sentence and repeat it out loud at the same time or right after. Trains pronunciation, rhythm and listening at once. **At least 5 minutes of real practice every day are mandatory** – the rest of the app stays locked until you've done them. |
 | **Spaced repetition** | Every word and every core sentence lives in a Leitner box. Hard items come back tomorrow, easy ones in a week, then a month. |
 | **Comprehensible input** | A 10-episode story series and themed texts just above your level. Tap any underlined word to see its meaning. |
 | **Output** | Role-play real conversations (you speak your part, the app plays the others), dictation, free speaking against a 90-second timer. |
 
 ## Features
 
-- 🎧 **Daily shadowing gate** – 300 core everyday sentences in 15 situations (doctor, landlord, Bürgeramt, phone, meetings, IT team …). Only *active* time counts: the timer pauses if you stop interacting.
+- 🎧 **Daily shadowing gate** – 300 core everyday sentences in 15 situations (doctor, landlord, Bürgeramt, phone, meetings, IT team …). Only real practice counts: for each sentence the time from listening to your self-rating is credited – and only after you repeated it (🎤 or ✓), capped by sentence length. Leaving the app open does nothing.
 - 📚 **3,017 words in 32 themes** – about 2,000 general B2 words and 1,000 IT words, each with article colour, plural, an example sentence and its English translation.
 - 🇬🇧 **German ↔ English throughout** – every word and sentence can be heard in both languages. Switch the *practice language* to English to train dictation, speaking and flashcards in English too.
 - 🇹🇷 **Turkish only where it helps** – 435 complex words (bureaucracy, idioms, long compounds) also have a Turkish gloss.
