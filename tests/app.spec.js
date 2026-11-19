@@ -73,6 +73,16 @@ test.describe("daily shadowing gate", () => {
     expect(await page.evaluate(() => window.App.day().sh)).toBeLessThanOrEqual(40);
   });
 
+  test("paragraph shadowing credits time after reading the whole text", async ({ page }) => {
+    await open(page, "shadow/texts/0/ganz");
+    await page.getByRole("button", { name: "▶ Text anhören" }).click();
+    await page.waitForTimeout(1200);
+    await page.getByRole("button", { name: "✓ Laut gelesen" }).click();
+    const sh = await page.evaluate(() => window.App.day().sh);
+    expect(sh).toBeGreaterThanOrEqual(1);
+    await expect(page.getByText(/fürs Tagesziel gutgeschrieben/)).toBeVisible();
+  });
+
   test("unlocks everything once the goal is reached", async ({ page }) => {
     await unlock(page);
     await open(page, "themes");
@@ -93,7 +103,7 @@ test.describe("content", () => {
   test("every route renders", async ({ page }) => {
     const routes = ["home", "learn", "themes", "theme/qa", "theme/qa/read", "theme/qa/dialog", "theme/qa/test", "lesson/qa/0", "lesson/qa/0/flash",
       "lesson/qa/0/listen", "lesson/qa/0/speak", "lesson/qa/0/test", "stories", "stories/0", "convs", "convs/0", "convs/0/role", "notebook", "search",
-      "test", "speak", "settings", "shadow/groups", "shadow/groups/0"];
+      "test", "speak", "settings", "shadow/groups", "shadow/groups/0", "shadow/texts", "shadow/texts/0", "shadow/texts/0/ganz", "theme/qa/shadow"];
     for (const r of routes) {
       await open(page, r);
       await expect(page.locator("#main h1").first(), r).toBeVisible();

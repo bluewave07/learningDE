@@ -14,5 +14,12 @@ module.exports = defineConfig({
     // set CHROME_PATH to use an installed Chrome instead of the bundled Chromium
     launchOptions: process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }]
+  // locally only Chromium by default (BROWSERS=all for everything); CI runs every browser
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+    { name: "webkit", use: { ...devices["Desktop Safari"] } },
+    { name: "mobile-safari", use: { ...devices["iPhone 13"] } },
+    { name: "mobile-chrome", use: { ...devices["Pixel 7"] } }
+  ].filter((p) => process.env.CI || process.env.BROWSERS === "all" || p.name === "chromium")
 });

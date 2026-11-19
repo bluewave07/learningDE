@@ -68,6 +68,7 @@
   App.SH = (window.SHADOWING || []).flatMap((g, gi) => g.s.map((s, i) => ({ id: "sh:" + gi + ":" + i, group: gi, gt: g.t, de: s[0], en: s[1] })));
   App.STORIES = window.STORIES || [];
   App.CONVS = window.CONVERSATIONS || [];
+  App.TEXTS = window.SHADOW_TEXTS || [];
 
   /* lookup for tap-to-translate in stories */
   const strip = (s) => s.toLowerCase().replace(/^(der|die|das|sich|den|etwas|einen|eine|ein)\s+/g, "");
@@ -204,7 +205,7 @@
     for (let i = 0; i < items.length; i++) {
       if (my !== tok) return;
       onStep && onStep(i);
-      await App.speak(items[i][0], items[i][1], { voice: items[i][2] });
+      await App.speak(items[i][0], items[i][1], { voice: items[i][2], rate: items[i][4] });
       if (my !== tok) return;
       await App.wait(items[i][3] || 300);
     }

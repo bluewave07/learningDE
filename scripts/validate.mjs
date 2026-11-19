@@ -25,7 +25,7 @@ for (const f of files) {
   try { vm.runInContext(readFileSync(join(dataDir, f), "utf8"), sandbox, { filename: f }); }
   catch (e) { err(`${f}: cannot be parsed – ${e.message}`); }
 }
-const { THEMES = [], SHADOWING = [], STORIES = [], CONVERSATIONS = [] } = sandbox.window;
+const { THEMES = [], SHADOWING = [], SHADOW_TEXTS = [], STORIES = [], CONVERSATIONS = [] } = sandbox.window;
 
 const isStr = (s) => typeof s === "string" && s.trim().length > 0;
 const checkQuestions = (where, qs) => {
@@ -71,6 +71,14 @@ const shCount = SHADOWING.reduce((a, g) => a + (g.s || []).length, 0);
 SHADOWING.forEach((g, i) => { if (!isStr(g.t) || !isStr(g.te)) err(`shadowing group ${i + 1}: missing title`); checkSentences(`shadowing ${g.t}`, g.s); });
 if (shCount !== 300) err(`shadowing has ${shCount} sentences, expected 300`);
 
+/* paragraph shadowing */
+SHADOW_TEXTS.forEach((x, i) => {
+  if (!isStr(x.t) || !isStr(x.te)) err(`shadowing text ${i + 1}: missing title`);
+  if (!THEMES.some((t) => t.id === x.theme)) err(`shadowing text ${i + 1}: unknown theme "${x.theme}"`);
+  checkSentences(`shadowing text ${x.t}`, x.s);
+  if ((x.s || []).length < 4) err(`shadowing text ${x.t}: a paragraph needs at least 4 sentences`);
+});
+
 /* stories & conversations */
 STORIES.forEach((s, i) => { if (!isStr(s.t)) err(`story ${i + 1}: missing title`); checkSentences(`story ${i + 1}`, s.s); checkQuestions(`story ${i + 1}`, s.q); });
 CONVERSATIONS.forEach((c, i) => {
@@ -88,6 +96,7 @@ const gen = THEMES.filter((t) => t.g === "gen").reduce((a, t) => a + t.w.length,
 console.log(`Themes:        ${THEMES.length}`);
 console.log(`Words:         ${total} (${gen} general, ${total - gen} IT)`);
 console.log(`Shadowing:     ${shCount} sentences in ${SHADOWING.length} groups`);
+console.log(`Paragraphs:    ${SHADOW_TEXTS.length} shadowing texts`);
 console.log(`Stories:       ${STORIES.length}`);
 console.log(`Conversations: ${CONVERSATIONS.length}`);
 if (warnings.length) console.log(`\n${warnings.length} warning(s):\n  ` + warnings.join("\n  "));

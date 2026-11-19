@@ -144,7 +144,7 @@
 
     function next() {
       if (!queue.length && opts.refill) queue = opts.refill();
-      if (!queue.length) { window.onkeydown = null; el.innerHTML = `<div class="result"><div class="ring" style="--p:100">✓</div><p><b>Alle Sätze geübt!</b></p></div>`; return; }
+      if (!queue.length) { window.onkeydown = null; if (opts.onFinish) opts.onFinish(el); else el.innerHTML = `<div class="result"><div class="ring" style="--p:100">✓</div><p><b>Alle Sätze geübt!</b></p></div>`; return; }
       cur = queue.shift(); spoken = false; heard = false; startedAt = 0;
       draw(); play();
     }

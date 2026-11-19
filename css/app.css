@@ -231,3 +231,23 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 2
 header { padding-top: max(10px, env(safe-area-inset-top)); padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
 .layout { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
 @media (display-mode: standalone) { #install { display: none !important; } }
+
+/* compact layout for phones */
+@media (max-width: 600px) {
+  header { gap: 8px 10px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); padding-bottom: 8px; }
+  .logo { font-size: 16px; }
+  .gatebar { font-size: 12px; padding: 3px 8px; }
+  .hctl { width: 100%; gap: 10px; justify-content: space-between; }
+  .hctl .lbl { display: none; }
+  .hctl input[type=range] { width: 110px; }
+  .seg button { padding: 5px 10px; }
+  .panel { padding: 14px; border-radius: 14px; }
+  h1 { font-size: 22px; }
+  .uhead .toolbar label.tog { font-size: 13px; }
+  .shadow-btns .btn.big { padding: 9px 12px; font-size: 14px; }
+  .timer-ring { width: 96px; height: 96px; font-size: 19px; }
+  .navi { padding: 6px 8px; }
+  .navi .ic { flex-basis: 24px; height: 24px; }
+  .tab small, .steps { display: none; }
+  .tab { padding: 6px 12px; }
+}

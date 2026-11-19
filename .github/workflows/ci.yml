@@ -17,8 +17,8 @@ jobs:
       - run: npm ci
       - name: Validate content
         run: npm run validate
-      - run: npx playwright install --with-deps chromium
-      - name: End-to-end tests
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: End-to-end tests (Chromium, Firefox, WebKit, iPhone, Android)
         run: npm test
       - uses: actions/upload-artifact@v4
         if: failure()

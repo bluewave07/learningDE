@@ -44,10 +44,11 @@
     const mastered = A.SH.filter((s) => A.srs.mastered("shadow", s.id)).length;
     m.innerHTML = `<div class="uhead"><div><div class="kicker">Täglich · Pflicht</div><h1>Shadowing</h1><div class="muted">300 Kernsätze für den Alltag · ${mastered} sicher</div></div>
       <div class="toolbar" style="margin:0"><label class="tog"><input type="checkbox" id="blind" ${p.blind ? "checked" : ""}> Blind-Modus (erst hören, dann lesen)</label></div></div>
-      ${tabsHtml([["daily", "Tagestraining", "Daily session"], ["groups", "Themen", "Browse"]], sub, "#/shadow")}
+      ${tabsHtml([["daily", "Tagestraining", "Daily session"], ["texts", "Texte", "Paragraphs"], ["groups", "Satzgruppen", "Sentence groups"]], sub, "#/shadow")}
       <div class="panel" id="sh"></div>`;
     $("#blind").onchange = (e) => { A.setPref("blind", e.target.checked); A.route(); };
     const el = $("#sh");
+    if (sub === "texts") return paragraphShadow(el, params[1] != null ? +params[1] : null, params[2] || "satz");
     if (sub === "groups") {
       const gi = params[1] != null ? +params[1] : null;
       if (gi == null) {
@@ -98,6 +99,8 @@
     const tabs = [["lessons", "Lektionen", "Lessons"]];
     if (t.r) tabs.push(["read", "Lesen & Hören", "Read & listen"]);
     if (t.d) tabs.push(["dialog", "Dialog", "Dialogue"]);
+    const ti = A.TEXTS.findIndex((x) => x.theme === t.id);
+    if (ti >= 0) tabs.push(["shadow", "Shadowing-Text", "Paragraph"]);
     tabs.push(["test", "Thementest", "Theme test"]);
     const pr = themeProgress(t);
     m.innerHTML = `<div class="uhead"><div><div class="kicker">${t.g === "it" ? "IT" : "Allgemein"} · Thema</div><h1>${esc(t.t)}</h1><div class="muted">${esc(t.te)} · ${pr.m}/${pr.n} Wörter sicher</div></div><a class="btn" href="#/themes">← Alle Themen</a></div>
@@ -110,6 +113,7 @@
       }).join("")}</div></div>`;
     } else if (sub === "read") readText(tc, t.r, t.id + ":read");
     else if (sub === "dialog") dialogView(tc, t.d, t.id + ":dialog");
+    else if (sub === "shadow" && ti >= 0) { tc.innerHTML = `<div class="panel" id="psh"></div>`; paragraphShadow($("#psh"), ti, params[2] || "satz", "#/theme/" + t.id + "/shadow"); }
     else {
       tc.innerHTML = `<div class="panel"><h3>Thementest <small>15 Fragen aus allen Lektionen</small></h3><div id="q" style="margin-top:12px"></div></div>`;
       A.runQuiz($("#q"), () => A.makeTest(t.words, t.words, 15), { key: t.id + ":test" });
@@ -131,6 +135,73 @@
     if (r.q) A.runQuiz($("#q"), A.qsFrom(r.q), { key });
     const L = A.prefs().lang;
     A.dictation($("#dict"), r.s.map((s) => ({ t: L === "de" ? s[0] : s[1], tt: L === "de" ? s[1] : s[0] })), L);
+  }
+
+  /* ---------- paragraph shadowing ----------
+     "satz": shadow sentence by sentence (credited like the daily session)
+     "ganz": listen to the whole paragraph, then speak it in one go; credited on completion */
+  function paragraphShadow(el, i, mode, base) {
+    base = base || "#/shadow/texts/" + i;
+    if (i == null || !A.TEXTS[i]) {
+      const block = (g, title) => `<h3 style="margin-top:6px">${title}</h3><div class="cards" style="margin:10px 0 18px">${A.TEXTS.map((x, k) => [x, k]).filter(([x]) => (A.themeById[x.theme] || {}).g === g).map(([x, k]) => {
+        const done = A.S.scores["para:" + k]; const th = A.themeById[x.theme];
+        return `<a class="card" href="#/shadow/texts/${k}"><span class="kicker">${esc(th ? th.t : x.theme)}</span><span class="tt">${esc(x.t)}</span><span class="sub">${esc(x.te)} · ${x.s.length} Sätze${done != null ? ` · ✓ ${done}%` : ""}</span></a>`;
+      }).join("")}</div>`;
+      el.innerHTML = `<p class="muted" style="margin-top:0">Zusammenhängende Texte zum Nachsprechen – erst Satz für Satz, dann der ganze Absatz am Stück. Die Zeit zählt fürs Tagesziel.</p>
+        ${block("gen", "Alltag & Beruf")}${block("it", "IT")}`;
+      return;
+    }
+    const x = A.TEXTS[i], th = A.themeById[x.theme];
+    const head = `<div class="toolbar"><a class="btn" href="#/shadow/texts">← Alle Texte</a><b>${esc(x.t)}</b><span class="muted">${esc(x.te)}${th ? ` · <a href="#/theme/${th.id}">${esc(th.t)}</a>` : ""}</span></div>
+      <div class="tabs"><a class="tab ${mode === "satz" ? "on" : ""}" href="${base}/satz">1 · Satz für Satz <small>Sentence by sentence</small></a><a class="tab ${mode === "ganz" ? "on" : ""}" href="${base}/ganz">2 · Ganzer Text <small>Whole paragraph</small></a></div>`;
+    if (mode !== "ganz") {
+      el.innerHTML = head + `<div id="pp"></div>`;
+      A.shadowPlayer($("#pp"), x.s.map((s, k) => ({ id: `para:${i}:${k}`, de: s[0], en: s[1], gt: `${x.t} · ${k + 1}/${x.s.length}` })), {
+        gate: true,
+        onFinish: (box) => { box.innerHTML = `<div class="result"><div class="ring" style="--p:100">✓</div><p><b>Alle ${x.s.length} Sätze geübt!</b></p><a class="btn primary big" href="${base}/ganz">Jetzt den ganzen Text →</a></div>`; }
+      });
+      return;
+    }
+    const full = x.s.map((s) => s[0]).join(" ");
+    const cap = Math.round(Math.min(240, Math.max(40, (full.length * 0.075) / A.prefs().rate * 3 + 20)));
+    let startedAt = 0, said = "";
+    el.innerHTML = head + `
+      <div class="steps"><span>1 · Ganzen Text anhören</span><span>2 · Laut mitlesen</span><span>3 · 🎤 Den ganzen Text sprechen</span></div>
+      <div class="toolbar"><button class="btn primary" id="pl">▶ Text anhören</button><button class="btn" id="slow">🐢 Langsam</button><button class="btn" id="st">■</button><label class="tog"><input type="checkbox" id="en"> English</label></div>
+      <div class="text" id="txt">${x.s.map((s, k) => `<p class="sent" data-k="${k}"><span class="sd">${A.tokenize(s[0])}</span><span class="se">${esc(s[1])}</span></p>`).join("")}</div>
+      <div class="toolbar"><button class="mic btn big" id="rec">🎤 Ganzen Text sprechen</button><button class="btn big" id="self">✓ Laut gelesen</button></div>
+      <div class="live hidden" id="live"></div><div id="res"></div>`;
+    const ps = $$(".sent", el);
+    const playAll = (rate) => {
+      if (!startedAt) startedAt = Date.now();
+      A.seq(x.s.map((y) => [y[0], "de", 0, 350, rate]), (k) => { ps.forEach((p) => p.classList.remove("playing")); if (k >= 0) ps[k].classList.add("playing"); });
+    };
+    $("#pl", el).onclick = () => { A.unlockTTS(); playAll(); };
+    $("#slow", el).onclick = () => { A.unlockTTS(); playAll(Math.max(0.55, A.prefs().rate - 0.3)); };
+    $("#st", el).onclick = () => { A.stopAll(); ps.forEach((p) => p.classList.remove("playing")); };
+    $("#en", el).onchange = (e) => $("#txt", el).classList.toggle("en", e.target.checked);
+    const finish = (score) => {
+      const sec = startedAt ? Math.floor(Math.min(cap, (Date.now() - startedAt) / 1000)) : 0;
+      if (sec > 0) A.gate.add(sec);
+      A.S.scores["para:" + i] = Math.max(A.S.scores["para:" + i] || 0, score); A.save();
+      startedAt = 0;
+      $("#res", el).innerHTML += `<div class="note">${sec ? `+${A.fmtTime(sec)} fürs Tagesziel gutgeschrieben. ` : ""}${i + 1 < A.TEXTS.length ? `<a href="#/shadow/texts/${i + 1}">Nächster Text →</a>` : ""}</div>`;
+    };
+    $("#self", el).onclick = () => { if (!startedAt) return A.toast("Erst den Text anhören 🙂"); A.stopAll(); $("#res", el).innerHTML = ""; finish(60); };
+    const rec = $("#rec", el);
+    let running = false;
+    rec.onclick = async () => {
+      if (running) { running = false; A.stopAll(); return; }
+      if (!startedAt) return A.toast("Erst den Text anhören 🙂");
+      if (!A.SR) { $("#res", el).innerHTML = `<p class="hint">${esc(A.micErr("unsupported"))} Lies den Text laut und klicke „✓ Laut gelesen“.</p>`; return; }
+      A.stopAll(); running = true; said = ""; rec.classList.add("rec"); rec.textContent = "● Fertig"; const live = $("#live", el); live.classList.remove("hidden"); live.textContent = "…";
+      while (running) {
+        try { const t = await A.listen("de", { continuous: true, onInterim: (y) => (live.textContent = (said + " " + y).trim()) }); said = (said + " " + t).trim(); live.textContent = said || "…"; }
+        catch (e) { if (e === "no-speech" || e === "aborted") { if (!running) break; continue; } $("#res", el).innerHTML = `<span class="badt">${esc(A.micErr(e))}</span>`; break; }
+      }
+      running = false; rec.classList.remove("rec"); rec.textContent = "🎤 Ganzen Text sprechen";
+      if (said) { $("#res", el).innerHTML = A.alignHtml(full, said, "Erkannt"); finish(A.align(full, said).score); }
+    };
   }
 
   function dialogView(el, d, key) {
