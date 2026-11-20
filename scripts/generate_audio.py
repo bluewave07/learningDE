@@ -11,6 +11,7 @@ Each clip is written as OUT_DIR/<id>.mp3 (mono, 22 kHz, 40 kbit/s) – plays eve
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -40,6 +41,11 @@ def main() -> int:
     if not todo:
         return 0
 
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:  # e.g. on CI runners: a bundled static binary
+        import imageio_ffmpeg
+        ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+
     voice = PiperVoice.load(args.model)
     cfg = SynthesisConfig(length_scale=args.length_scale)
     started = time.time()
@@ -50,7 +56,7 @@ def main() -> int:
                 voice.synthesize_wav(x["text"], wav, syn_config=cfg)
             out = os.path.join(args.out_dir, x["id"] + ".mp3")
             subprocess.run(
-                ["ffmpeg", "-loglevel", "error", "-y", "-i", wav_path,
+                [ffmpeg, "-loglevel", "error", "-y", "-i", wav_path,
                  # a short fade avoids clicks; a little silence at the end sounds more natural
                  "-af", "afade=t=in:d=0.01,apad=pad_dur=0.12",
                  "-ac", "1", "-ar", "22050", "-codec:a", "libmp3lame", "-b:a", "40k", out],
