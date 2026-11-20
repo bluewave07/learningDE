@@ -68,6 +68,8 @@
     installPrompt = null; $("#install").classList.add("hidden");
   };
 
+  A.clipsReady.then(() => { if ((location.hash || "").includes("settings")) A.route(); });
+
   initHeader();
   A.route();
 })();

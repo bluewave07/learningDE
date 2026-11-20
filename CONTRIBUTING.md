@@ -29,6 +29,10 @@ Question format: `[question DE, question EN, options[], index of the correct opt
 
 **Conversation** (`data/conversations.js`): lines whose speaker is `"Sie"` are spoken by the learner in role-play mode.
 
+## Audio
+
+You don't need to record anything: after a change to `data/` is merged, the *Generate audio* workflow voices the new sentences automatically.
+
 ## Before you open a pull request
 
 ```bash

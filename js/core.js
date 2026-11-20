@@ -150,7 +150,50 @@
      - speaking without a prior user gesture is blocked ("not-allowed") – reported via App.ttsBlocked */
   const live = new Set();
   App.ttsBlocked = false;
+  /* ---------- natural recorded voice (pre-generated clips, see scripts/generate_audio.py) ---------- */
+  const clips = { ids: new Set(), el: null, urls: new Map(), done: null, voice: "" };
+  App.clips = clips;
+  App.clipsReady = (location.protocol.startsWith("http") ? fetch("audio/de/index.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)) : Promise.resolve(null))
+    .then((ix) => { if (ix && ix.ids) { clips.ids = new Set(ix.ids); clips.voice = ix.voice || ""; } })
+    .catch(() => { /* no clips – device voice only */ });
+  const clipEl = () => { if (!clips.el) { clips.el = new Audio(); clips.el.preload = "auto"; } return clips.el; };
+  App.hasClip = (text) => App.prefs().natural !== false && clips.ids.has(window.audioId(text));
+  /** plays a recorded clip; fetched as a blob so the service worker can cache it for offline use */
+  const playClip = async (text, rate) => {
+    const id = window.audioId(text);
+    let url = clips.urls.get(id);
+    if (!url) {
+      const r = await fetch("audio/de/" + id + ".mp3");
+      if (!r.ok) throw new Error("missing clip");
+      url = URL.createObjectURL(await r.blob());
+      clips.urls.set(id, url);
+      if (clips.urls.size > 300) { const [k, v] = clips.urls.entries().next().value; URL.revokeObjectURL(v); clips.urls.delete(k); }
+    }
+    const a = clipEl();
+    return new Promise((res) => {
+      let finished = false;
+      const fin = (ok) => { if (finished) return; finished = true; a.onended = a.onerror = null; clips.done = null; res({ ok }); };
+      clips.done = fin;
+      a.onended = () => fin(true);
+      a.onerror = () => fin(false);
+      a.src = url;
+      a.playbackRate = Math.max(0.5, Math.min(1.5, rate / 0.9)); // the default speed setting (90 %) = natural speed
+      a.play().then(() => { App.ttsBlocked = false; }).catch((e) => {
+        if (e && e.name === "NotAllowedError") { App.ttsBlocked = true; document.dispatchEvent(new CustomEvent("tts-blocked")); }
+        fin(false);
+      });
+    });
+  };
+
   App.speak = (text, lang, opts) => {
+    opts = opts || {};
+    if (lang === "de" && App.hasClip(text)) {
+      return playClip(text, opts.rate || App.prefs().rate).then((r) => (r.ok || App.ttsBlocked ? r : App.speakTTS(text, lang, opts)), () => App.speakTTS(text, lang, opts));
+    }
+    return App.speakTTS(text, lang, opts);
+  };
+
+  App.speakTTS = (text, lang, opts) => {
     opts = opts || {};
     if (!TTS) { App.toast("Dein Browser unterstützt keine Sprachausgabe."); return Promise.resolve({ ok: false }); }
     if (!voices.length) loadVoices();
@@ -178,20 +221,23 @@
   };
   let tok = 0;
   App.rec = null;
-  App.stopAll = () => { tok++; if (TTS) speechSynthesis.cancel(); if (App.rec) { try { App.rec.abort(); } catch (e) { /* ignore */ } App.rec = null; } };
+  App.stopAll = () => { tok++; if (clips.el) { try { clips.el.pause(); } catch (e) { /* ignore */ } } if (clips.done) clips.done(true); if (TTS) speechSynthesis.cancel(); if (App.rec) { try { App.rec.abort(); } catch (e) { /* ignore */ } App.rec = null; } };
   /* only wait after cancel() if something was actually playing – an extra delay loses the
      user gesture on iOS, where the first utterance must start inside the tap handler */
   App.sayNow = (text, lang, opts) => {
-    const busy = TTS && (speechSynthesis.speaking || speechSynthesis.pending);
+    const busy = TTS && (speechSynthesis.speaking || speechSynthesis.pending) && !(lang === "de" && App.hasClip(text));
     App.stopAll();
     return busy ? App.wait(60).then(() => App.speak(text, lang, opts)) : App.speak(text, lang, opts);
   };
   /* iOS / Android unlock: speak a silent utterance synchronously on the first touch or click.
      After that, later (asynchronous) playback is allowed. */
   let unlocked = false;
+  const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA=";
   App.unlockTTS = () => {
-    if (unlocked || !TTS) return;
+    if (unlocked) return;
     unlocked = true;
+    try { const a = clipEl(); if (!a.src) { a.src = SILENT_WAV; const p = a.play(); if (p && p.catch) p.catch(() => {}); } } catch (e) { /* ignore */ }
+    if (!TTS) return;
     try {
       loadVoices();
       const u = new SpeechSynthesisUtterance(" ");

@@ -1,0 +1,135 @@
+name: Generate audio
+
+# Generates natural German speech (Piper, voice "thorsten-high") for every text in data/.
+# Only new or changed texts are synthesised. The clips are stored as the release asset
+# "audio-de.zip" (tag: audio) – not in git – and picked up by the Pages deploy.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["data/**", "js/audio-id.js", "scripts/audio-manifest.mjs", "scripts/generate_audio.py"]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: audio
+  cancel-in-progress: false
+
+env:
+  VOICE_URL: https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx
+  SHARDS: 8
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      todo: ${{ steps.diff.outputs.todo }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/audio-manifest.mjs manifest.json
+      - name: Find clips that still need to be generated
+        id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p existing
+          if gh release download audio -p audio-de.zip -D . 2>/dev/null; then unzip -q audio-de.zip -d existing; fi
+          node -e '
+            const fs = require("fs");
+            const have = new Set(fs.readdirSync("existing").filter(f => f.endsWith(".mp3")).map(f => f.slice(0, -4)));
+            const all = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
+            const todo = all.filter(x => !have.has(x.id));
+            fs.writeFileSync("todo.json", JSON.stringify(todo));
+            console.log(`${all.length} clips in total, ${have.size} already exist, ${todo.length} to generate`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `todo=${todo.length}\n`);
+          '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manifest
+          path: |
+            manifest.json
+            todo.json
+
+  generate:
+    needs: prepare
+    if: needs.prepare.outputs.todo != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install piper-tts
+      - name: Cache voice model
+        uses: actions/cache@v4
+        with:
+          path: voice
+          key: piper-thorsten-high-v1
+      - name: Download voice model
+        run: |
+          mkdir -p voice
+          [ -f voice/model.onnx ] || curl -sSfL -o voice/model.onnx "$VOICE_URL"
+          [ -f voice/model.onnx.json ] || curl -sSfL -o voice/model.onnx.json "$VOICE_URL.json"
+      - uses: actions/download-artifact@v4
+        with:
+          name: manifest
+      - name: Synthesise shard ${{ matrix.shard }}
+        run: python3 scripts/generate_audio.py todo.json clips voice/model.onnx --shard ${{ matrix.shard }} --shards $SHARDS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clips-${{ matrix.shard }}
+          path: clips/
+          if-no-files-found: ignore
+          retention-days: 2
+
+  publish:
+    needs: [prepare, generate]
+    if: always() && needs.prepare.result == 'success' && needs.generate.result != 'failure'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: manifest
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: clips-*
+          path: new
+          merge-multiple: true
+      - name: Merge with existing clips, drop clips of deleted texts, write index
+        run: |
+          mkdir -p de new
+          if gh release download audio -p audio-de.zip -D . 2>/dev/null; then unzip -q audio-de.zip -d de; fi
+          cp -n new/*.mp3 de/ 2>/dev/null || true
+          node -e '
+            const fs = require("fs");
+            const want = new Set(JSON.parse(fs.readFileSync("manifest.json", "utf8")).map(x => x.id));
+            let removed = 0;
+            for (const f of fs.readdirSync("de")) {
+              if (!f.endsWith(".mp3")) continue;
+              if (!want.has(f.slice(0, -4))) { fs.unlinkSync("de/" + f); removed++; }
+            }
+            const ids = fs.readdirSync("de").filter(f => f.endsWith(".mp3")).map(f => f.slice(0, -4)).sort();
+            fs.writeFileSync("de/index.json", JSON.stringify({ voice: "thorsten-high", count: ids.length, ids }));
+            console.log(`${ids.length} clips (${want.size} wanted), removed ${removed} obsolete`);
+          '
+          rm -f audio-de.zip && (cd de && zip -q -0 ../audio-de.zip *)
+          du -sh audio-de.zip
+      - name: Upload release asset
+        run: |
+          gh release view audio >/dev/null 2>&1 || gh release create audio --title "Audio (German, Piper thorsten-high)" --notes "Generated speech clips used by the app. Updated automatically by the 'Generate audio' workflow."
+          gh release upload audio audio-de.zip --clobber
+      - name: Redeploy the site with the new audio
+        run: gh workflow run pages.yml --ref main

@@ -24,6 +24,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Collect site files
         run: mkdir _site && cp -r index.html manifest.webmanifest sw.js css js data icons _site/
+      - name: Add generated audio (if available)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release download audio -p audio-de.zip -D . -R "$GITHUB_REPOSITORY" 2>/dev/null; then
+            mkdir -p _site/audio/de && unzip -q audio-de.zip -d _site/audio/de && echo "audio: $(ls _site/audio/de | wc -l) files"
+          else echo "no audio release yet – the app falls back to the device voice"; fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

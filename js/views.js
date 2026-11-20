@@ -426,6 +426,8 @@
       </div>
       <div class="panel"><h3>Technik <small>Setup</small></h3>
         <div class="note ${dv ? "" : "warn"}">Deutsche Stimme: <b>${dv ? esc(dv.name) : "nicht gefunden"}</b> · English voice: <b>${ev ? esc(ev.name) : "not found"}</b>${dv ? "" : " – installiere eine deutsche Stimme (Windows: Zeit & Sprache → Sprache · macOS: Bedienungshilfen → Gesprochene Inhalte) oder nutze Chrome/Edge."}</div>
+        <div class="note ${A.clips.ids.size ? "" : "warn"}">Natürliche Stimme: <b>${A.clips.ids.size ? `${esc(A.clips.voice || "Piper")} · ${A.clips.ids.size} Aufnahmen` : "nicht verfügbar (offline über file:// oder noch nicht erzeugt) – es wird die Gerätestimme benutzt"}</b></div>
+        <div class="toolbar"><label class="tog"><input type="checkbox" id="nat" ${p.natural !== false ? "checked" : ""}> Natürliche Stimme für Deutsch verwenden</label></div>
         <div class="toolbar"><button class="btn primary" id="ttsDe">🔊 Deutsch testen</button><button class="btn" id="ttsEn">🔊 English test</button><span class="muted" id="ttsRes"></span></div>
         <p class="hint">Stimmen auf diesem Gerät: ${A.voicesFor("de").length} deutsch, ${A.voicesFor("en").length} englisch.</p>
         <div class="note">Kein Ton auf dem Handy? <b>iPhone:</b> Stummschalter an der Seite aus, Lautstärke hoch, Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Deutsch laden. <b>Android:</b> Einstellungen → Sprachausgabe (Text-to-Speech) → Google-Sprachausgabe → Deutsch installieren.</div>
@@ -438,6 +440,7 @@
       const r = await A.sayNow(text, lang);
       $("#ttsRes").textContent = r && r.ok ? "✓ Ton funktioniert" : A.ttsBlocked ? "✖ vom Browser blockiert – nochmal tippen" : "✖ kein Ton – siehe Hinweise unten";
     };
+    $("#nat").onchange = (e) => A.setPref("natural", e.target.checked);
     $("#ttsDe").onclick = test("de", "Hallo! Wenn du mich hörst, funktioniert die Sprachausgabe.");
     $("#ttsEn").onclick = test("en", "Hello! If you can hear me, speech output works.");
     const num = (id, key, min) => ($("#" + id).onchange = (e) => { const v = Math.max(min, Math.min(+e.target.max, +e.target.value || min)); e.target.value = v; A.setPref(key, v); A.renderChrome(); });
